@@ -1,0 +1,20 @@
+GenericEntity : "{FA5C25BF66A53DCF}Prefabs/Weapons/Rifles/AK74/Rifle_AK74.et" {
+ ID "CFBAA4B725411E45"
+ components {
+  WDS_DurabilityComponent "{62D90891E584D201}" {
+  }
+  WeaponComponent "{CFBAA4B706BA66E8}" {
+   components {
+    MuzzleComponent "{CA6BE4D6B867541F}" {
+     FireModes {
+      BaseFireMode "{62D908919FBFD236}" {
+       UIName "Malfunction"
+       ManualAction 1
+      }
+     }
+    }
+   }
+  }
+ }
+ coords 0.792 -0.569 0.461
+}

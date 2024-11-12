@@ -1,0 +1,18 @@
+GenericEntity : "{43497A18DD888667}Prefabs/Weapons/Rifles/AK74/Rifle_AK74_base.et" {
+ coords 126.143 1.444 129.55
+}
+GenericEntity : "{63E8322E2ADD4AA7}Prefabs/Weapons/Rifles/AK74/Rifle_AK74_GP25.et" {
+ components {
+  WDS_DurabilityComponent "{62D9088FEC7826F3}" {
+   m_sDestroyedEntity "{3BFBE9145E9C40B9}Prefabs/Weapons/MachineGuns/RPK74/MG_RPK74_base.et"
+   m_sExplosionEffect "{5592BC9B67C60D16}Particles/Weapon/Explosion_RGD5.ptc"
+   m_fDefaultDurability 3
+   m_fDegradePerShot 0.2
+   m_fJammingChance 15
+  }
+ }
+ coords 126.418 1 126.703
+}
+GenericEntity TestGun : "{FA5C25BF66A53DCF}Prefabs/Weapons/Rifles/AK74/Rifle_AK74.et" {
+ coords 126.137 2.596 126.702
+}

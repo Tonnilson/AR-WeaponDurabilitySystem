@@ -1,0 +1,23 @@
+GenericEntity : "{C95E11C60810F432}Prefabs/Items/Core/Item_Base.et" {
+ ID "508AB2013EEE1E00"
+ components {
+  InventoryItemComponent "{5222EB4D0C73006B}" {
+   Attributes SCR_ItemAttributeCollection "{5222EB4D0A2B466B}" {
+    ItemPhysAttributes ItemPhysicalAttributes PhysicalAttributes {
+     Weight 0.001
+     SizeSetupStrategy Manual
+     ItemDimensions 1 1 1
+     ItemVolume 20
+    }
+   }
+  }
+  MeshObject "{62D908A6F2DB3329}" {
+   Object "{01D3DD5E5B983C18}Assets/Props/Industrial/ToolBox_02/ToolBox_02.xob"
+  }
+  RigidBody "{62D908A6F0AE1747}" {
+  }
+  WDS_RepairItemComponent "{62D908A6E5AC3B77}" {
+  }
+ }
+ coords 125.864 1 131.511
+}

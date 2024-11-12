@@ -1,0 +1,8 @@
+GameProject {
+ ID "WeaponDurabilitySystem"
+ GUID "62D8225FCE76C9E1"
+ TITLE "WeaponDurabilitySystem"
+ Dependencies {
+  "58D0FB3206B6F859"
+ }
+}

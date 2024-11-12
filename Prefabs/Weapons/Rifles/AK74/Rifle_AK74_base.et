@@ -1,0 +1,31 @@
+GenericEntity : "{911D6C8DC7BA2D63}Prefabs/Weapons/Core/Rifle_Base.et" {
+ ID "CFBAA4B725411E45"
+ components {
+  WDS_DurabilityComponent "{62D9088FEC7826F3}" {
+  }
+  ActionsManagerComponent "{A29AE67FF4D82B0F}" {
+   ActionContexts {
+    UserActionContext "{62D908BFC5F3B325}" {
+     ContextName "repair"
+     Position PointInfo "{62D908BFFA74444E}" {
+      Offset 0 0.0898 0.1582
+     }
+     Radius 0.2
+    }
+   }
+   additionalActions {
+    WDS_RepairDurabilityUserAction "{62D908BC6781A437}" {
+     ParentContextList {
+      "repair"
+     }
+     UIInfo UIInfo "{62D908BC638D7F2A}" {
+     }
+     ActionTitle "Repair"
+     Duration 3
+     "Sort Priority" 1
+    }
+   }
+  }
+ }
+ coords 126.143 1.444 129.55
+}
