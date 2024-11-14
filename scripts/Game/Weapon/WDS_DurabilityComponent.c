@@ -5,11 +5,14 @@ class WDS_DurabilityComponentClass : ScriptComponentClass
 
 class WDS_DurabilityComponent : ScriptComponent
 {	
-	[Attribute(category: "Destruction", desc: "The model it will swap to when the gun explodes")]
+	[Attribute(category: "Destruction", UIWidgets.ResourcePickerThumbnail, desc: "If filled it will swap the gun to the defined prefab when durability reaches 0, you can use it to create destroyed gun effects etc")]
 	protected ResourceName m_sDestroyedEntity;
 	
-	[Attribute(defvalue: "{5592BC9B67C60D16}Particles/Weapon/Explosion_RGD5.ptc", category: "Destruction", desc: "Particle effect used for when gun explodes")]
+	[Attribute(defvalue: "{5592BC9B67C60D16}Particles/Weapon/Explosion_RGD5.ptc", UIWidgets.ResourcePickerThumbnail, params: "ptc", category: "Destruction", desc: "Particle effect used for when gun explodes")]
 	protected ResourceName m_sExplosionEffect;
+	
+	[Attribute(defvalue: "barrel_muzzle", category: "Destruction", desc: "Bone name for attaching the particle too, leave it as default value if you don't know what you are doing.")]
+	protected string m_sParticleBoneName;
 	
 	[Attribute(defvalue: "100", category: "Durability Settings")]
 	protected float m_fMaximumDurability;
@@ -20,10 +23,10 @@ class WDS_DurabilityComponent : ScriptComponent
 	[Attribute(defvalue: "0.10", category: "Durability Settings")]
 	protected float m_fDegradePerShot;
 	
-	[Attribute(defvalue: "30.0", category: "Durability Settings")]
+	[Attribute(defvalue: "25.0", category: "Durability Settings")]
 	protected float m_fJamAtDurability;
 	
-	[Attribute(defvalue: "20.0", category: "Durability Settings")]
+	[Attribute(defvalue: "4.5", category: "Durability Settings")]
 	protected float m_fJammingChance;
 	
 	[RplProp()]
@@ -50,6 +53,25 @@ class WDS_DurabilityComponent : ScriptComponent
 		m_fCurrentDurability = value;
 		Replication.BumpMe();
 	}
+	
+	protected float JamChance()
+	{
+		#ifdef WORKBENCH
+		PrintFormat("Jam Chance: %1", m_fJammingChance);
+		#endif
+		float thresholdPercentage = m_fJammingChance / 100;
+		float thresholdDurability = m_fMaximumDurability * (thresholdPercentage);
+		if (m_fCurrentDurability > thresholdDurability)
+			return thresholdPercentage;
+		else {
+			float scalingChance = (thresholdDurability - m_fCurrentDurability) / thresholdDurability;
+			float chance = thresholdPercentage + scalingChance * ((m_fJamAtDurability) - m_fJammingChance);
+			#ifdef WORKBENCH
+			PrintFormat("Increased Chance: %1", chance);
+			#endif
+			return chance / 100;
+		}
+	}
 
 	// This is called when the player shoots from player controller
 	// Degrades per shot
@@ -63,7 +85,9 @@ class WDS_DurabilityComponent : ScriptComponent
 		if (rplComp && rplComp.IsOwner())
 			Replication.BumpMe();
 		
+		#ifdef WORKBENCH
 		PrintFormat("Durability: %1", m_fCurrentDurability);
+		#endif
 		if (m_fCurrentDurability <= 0) {
 			PlayerController playerController = GetGame().GetPlayerManager().GetPlayerController(playerId);
 			if (playerController) {
@@ -82,11 +106,11 @@ class WDS_DurabilityComponent : ScriptComponent
 				// Particle effect?
 				if (m_sExplosionEffect) {
 					ParticleEffectEntitySpawnParams spawnParams();
-					GetOwner().GetTransform(spawnParams.Transform);
-					spawnParams.FollowParent = GetOwner();
+					Animation anm = GetOwner().GetAnimation();
+					spawnParams.Parent = GetOwner();
 					spawnParams.PlayOnSpawn = true;
-					spawnParams.UseFrameEvent = true;
 					spawnParams.DeleteWhenStopped = true;
+					spawnParams.PivotID = anm.GetBoneIndex(m_sParticleBoneName);
 					ParticleEffectEntity.SpawnParticleEffect(m_sExplosionEffect, spawnParams);
 				}
 				
@@ -112,8 +136,9 @@ class WDS_DurabilityComponent : ScriptComponent
 			}
 		} else {
 			if (m_fCurrentDurability < m_fJamAtDurability) {
-				float dice = Math.RandomFloat01();
-				if (dice <= (m_fJammingChance / 100)) {
+				RandomGenerator rand = new RandomGenerator();
+				float dice = rand.RandFloat01();
+				if (dice <= JamChance()) {
 					WeaponComponent wepComponent = WeaponComponent.Cast(GetOwner().FindComponent(WeaponComponent));
 					if (wepComponent) {
 						MuzzleComponent currentMuzzle = MuzzleComponent.Cast(wepComponent.GetCurrentMuzzle());
@@ -140,30 +165,5 @@ class WDS_DurabilityComponent : ScriptComponent
 				}
 			}
 		}
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	override void EOnFrame(IEntity owner, float timeSlice)
-	{
-		// remove if unused
-	}
-
-	//------------------------------------------------------------------------------------------------
-	override void EOnInit(IEntity owner)
-	{
-		// remove if unused
-	}
-
-	//------------------------------------------------------------------------------------------------
-	override void OnPostInit(IEntity owner)
-	{
-		// remove if unused
-		// SetEventMask(owner, EntityEvent.INIT | EntityEvent.FRAME);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	override void OnDelete(IEntity owner)
-	{
-		// remove if unused
 	}
 }
