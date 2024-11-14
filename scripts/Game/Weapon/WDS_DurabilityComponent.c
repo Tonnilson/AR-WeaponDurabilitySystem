@@ -35,6 +35,8 @@ class WDS_DurabilityComponent : ScriptComponent
 	[RplProp()]
 	protected float m_fCurrentDurability = m_fDefaultDurability;
 	
+	protected float m_fTimestamp;
+	
 	float GetCurrentDurability()
 	{
 		return m_fCurrentDurability;
@@ -79,6 +81,23 @@ class WDS_DurabilityComponent : ScriptComponent
 		ParticleEffectEntity.SpawnParticleEffect(m_sExplosionEffect, spawnParams);
 	}
 	
+	protected void PrefabSwap()
+	{
+		EntitySpawnParams params();
+		params.TransformMode = ETransformMode.LOCAL;
+		GetOwner().GetTransform(params.Transform);
+
+		IEntity destroyedGun = GetGame().SpawnEntityPrefab(m_sDestroyedEntity, false, GetOwner().GetWorld(), params);
+		if (destroyedGun) {
+			SCR_EntityHelper.DeleteEntityAndChildren(GetOwner());
+			Physics destroyedPhys = destroyedGun.GetPhysics();
+			if (destroyedPhys) {
+				destroyedPhys.ChangeSimulationState(SimulationState.SIMULATION);
+				destroyedPhys.ApplyImpulse(vector.Up * destroyedPhys.GetMass() * 0.001);
+			}
+		}
+	}
+	
 	protected float JamChance()
 	{
 		#ifdef WORKBENCH
@@ -100,15 +119,24 @@ class WDS_DurabilityComponent : ScriptComponent
 
 	// This is called when the player shoots from player controller
 	// Degrades per shot
+	// Why am I passing weapon...?
 	void Degrade(int playerId, notnull BaseWeaponComponent weapon)
 	{
 		m_fCurrentDurability -= m_fDegradePerShot;
 		if (m_fCurrentDurability < 0)
 			m_fCurrentDurability = 0;
 		
+		// Should only be ran by the owner (server)
 		RplComponent rplComp = RplComponent.Cast(GetOwner().FindComponent(RplComponent));
 		if (!rplComp || !rplComp.IsOwner())
 			return;
+		
+		MuzzleComponent currentMuzzle = MuzzleComponent.Cast(weapon.GetCurrentMuzzle());
+		if (!currentMuzzle)
+			return;
+		
+		int currentBarrelIndex = currentMuzzle.GetCurrentBarrelIndex();
+		BaseMagazineComponent currentMagazine = weapon.GetCurrentMagazine();
 		
 		Replication.BumpMe();
 		
@@ -116,6 +144,10 @@ class WDS_DurabilityComponent : ScriptComponent
 		PrintFormat("Durability: %1", m_fCurrentDurability);
 		#endif
 		if (m_fCurrentDurability <= 0) {
+			currentMuzzle.ClearChamber(currentBarrelIndex);
+			if (m_fTimestamp > 0 && (GetGame().GetWorld().GetWorldTime() - m_fTimestamp) < 1000)
+				return;
+			
 			PlayerController playerController = GetGame().GetPlayerManager().GetPlayerController(playerId);
 			if (playerController) {
 				IEntity ent = playerController.GetControlledEntity();
@@ -143,48 +175,27 @@ class WDS_DurabilityComponent : ScriptComponent
 
 				// Swap weapon model to something destroyed here?
 				if (m_sDestroyedEntity) {
-					EntitySpawnParams params();
-					params.TransformMode = ETransformMode.LOCAL;
-					GetOwner().GetTransform(params.Transform);
-
-					IEntity destroyedGun = GetGame().SpawnEntityPrefab(m_sDestroyedEntity, false, GetOwner().GetWorld(), params);
-					if (destroyedGun) {
-						SCR_EntityHelper.DeleteEntityAndChildren(GetOwner());
-						Physics destroyedPhys = destroyedGun.GetPhysics();
-						if (destroyedPhys) {
-							destroyedPhys.ChangeSimulationState(SimulationState.SIMULATION);
-							destroyedPhys.ApplyImpulse(vector.Up * destroyedPhys.GetMass() * 0.001);
-						}
-					}
+					GetGame().GetCallqueue().CallLater(PrefabSwap, 2000, false);
 				}
+				
+				m_fTimestamp = GetGame().GetWorld().GetWorldTime();
 			}
 		} else {
 			if (m_fCurrentDurability < m_fJamAtDurability) {
 				RandomGenerator rand = new RandomGenerator();
 				float dice = rand.RandFloat01();
 				if (dice <= JamChance()) {
-					WeaponComponent wepComponent = WeaponComponent.Cast(GetOwner().FindComponent(WeaponComponent));
-					if (wepComponent) {
-						MuzzleComponent currentMuzzle = MuzzleComponent.Cast(wepComponent.GetCurrentMuzzle());
-						if (!currentMuzzle)
-							return;
+					// Clear the chamber to give the illusion the gun "jammed"
+					int count = currentMagazine.GetAmmoCount();
+					currentMuzzle.ClearChamber(currentBarrelIndex);
 						
-						int currentBarrelIndex = currentMuzzle.GetCurrentBarrelIndex();
-						
-						BaseMagazineComponent currentMagazine = wepComponent.GetCurrentMagazine();
-						
-						// Clear the chamber to give the illusion the gun "jammed"
-						int count = currentMagazine.GetAmmoCount();
-						currentMuzzle.ClearChamber(currentBarrelIndex);
-						
-						// Insert the bullet from chamber into the magazine
-						if (currentMagazine)
-							currentMagazine.SetAmmoCount(++count);
-						
-						WeaponSoundComponent soundComp = WeaponSoundComponent.Cast(GetOwner().FindComponent(WeaponSoundComponent));
-						if (soundComp) {
-							soundComp.SoundEvent("SOUND_RELOAD_BOLT_RELEASE");
-						}
+					// Insert the bullet from chamber into the magazine
+					if (currentMagazine)
+						currentMagazine.SetAmmoCount(++count);
+					
+					WeaponSoundComponent soundComp = WeaponSoundComponent.Cast(GetOwner().FindComponent(WeaponSoundComponent));
+					if (soundComp) {
+						soundComp.SoundEvent("SOUND_RELOAD_BOLT_RELEASE");
 					}
 				}
 			}
