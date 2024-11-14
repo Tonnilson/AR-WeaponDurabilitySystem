@@ -14,6 +14,9 @@ class WDS_DurabilityComponent : ScriptComponent
 	[Attribute(defvalue: "barrel_muzzle", category: "Destruction", desc: "Bone name for attaching the particle too, leave it as default value if you don't know what you are doing.")]
 	protected string m_sParticleBoneName;
 	
+	[Attribute(defvalue: "1", category: "Destruction", desc: "Should the player take damage when weapon 'Explodes'")]
+	protected bool m_bDamageOnExplode;
+	
 	[Attribute(defvalue: "100", category: "Durability Settings")]
 	protected float m_fMaximumDurability;
 	
@@ -54,6 +57,28 @@ class WDS_DurabilityComponent : ScriptComponent
 		Replication.BumpMe();
 	}
 	
+	[RplRpc(RplChannel.Unreliable, RplRcver.Broadcast)]
+	protected void Rpc_Broadcast_CreateParticleEffect(RplId entityId)
+	{
+		if (!entityId.IsValid())
+			return;
+		
+		WDS_DurabilityComponent durabilityComponent = WDS_DurabilityComponent.Cast(Replication.FindItem(entityId));
+		if (!durabilityComponent)
+			return;
+		
+		Animation anm = durabilityComponent.GetOwner().GetAnimation();
+		if (!anm)
+			return;
+		
+		ParticleEffectEntitySpawnParams spawnParams();
+		spawnParams.Parent = durabilityComponent.GetOwner();
+		spawnParams.PlayOnSpawn = true;
+		spawnParams.DeleteWhenStopped = true;
+		spawnParams.PivotID = anm.GetBoneIndex(m_sParticleBoneName);
+		ParticleEffectEntity.SpawnParticleEffect(m_sExplosionEffect, spawnParams);
+	}
+	
 	protected float JamChance()
 	{
 		#ifdef WORKBENCH
@@ -82,8 +107,10 @@ class WDS_DurabilityComponent : ScriptComponent
 			m_fCurrentDurability = 0;
 		
 		RplComponent rplComp = RplComponent.Cast(GetOwner().FindComponent(RplComponent));
-		if (rplComp && rplComp.IsOwner())
-			Replication.BumpMe();
+		if (!rplComp || !rplComp.IsOwner())
+			return;
+		
+		Replication.BumpMe();
 		
 		#ifdef WORKBENCH
 		PrintFormat("Durability: %1", m_fCurrentDurability);
@@ -95,28 +122,25 @@ class WDS_DurabilityComponent : ScriptComponent
 				if (!ent)
 					return;
 				
-				ChimeraCharacter character = ChimeraCharacter.Cast(ent);
-				if (!character)
-					return;
-				
-				SCR_CharacterControllerComponent characterController = SCR_CharacterControllerComponent.Cast(character.GetCharacterController());
-				if (!characterController)
+				SCR_CharacterDamageManagerComponent charDamManager = SCR_CharacterDamageManagerComponent.Cast(ent.FindComponent(SCR_CharacterDamageManagerComponent));
+
+				if (!charDamManager)
 					return;
 				
 				// Particle effect?
 				if (m_sExplosionEffect) {
-					ParticleEffectEntitySpawnParams spawnParams();
-					Animation anm = GetOwner().GetAnimation();
-					spawnParams.Parent = GetOwner();
-					spawnParams.PlayOnSpawn = true;
-					spawnParams.DeleteWhenStopped = true;
-					spawnParams.PivotID = anm.GetBoneIndex(m_sParticleBoneName);
-					ParticleEffectEntity.SpawnParticleEffect(m_sExplosionEffect, spawnParams);
+					RplId entityId = Replication.FindId(this);
+					if (entityId.IsValid()) {
+						Rpc_Broadcast_CreateParticleEffect(entityId);
+						Rpc(Rpc_Broadcast_CreateParticleEffect, entityId);
+					}
 				}
 				
-				characterController.SetUnconscious(true);
-				GetGame().GetCallqueue().CallLater(characterController.SetUnconscious, 10 * 1000, false, false);
+				if (m_bDamageOnExplode)
+					charDamManager.AddParticularBleeding();
 				
+				charDamManager.ForceUnconsciousness(0);
+
 				// Swap weapon model to something destroyed here?
 				if (m_sDestroyedEntity) {
 					EntitySpawnParams params();
