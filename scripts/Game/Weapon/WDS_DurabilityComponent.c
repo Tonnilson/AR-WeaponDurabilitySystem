@@ -98,6 +98,7 @@ class WDS_DurabilityComponent : ScriptComponent
 		}
 	}
 	
+	// TODO~: Come up with a better more sophisticated formula, this is just really basic and not ideal. 
 	protected float JamChance()
 	{
 		#ifdef WORKBENCH
@@ -122,15 +123,6 @@ class WDS_DurabilityComponent : ScriptComponent
 	// Why am I passing weapon...?
 	void Degrade(int playerId, notnull BaseWeaponComponent weapon)
 	{
-		m_fCurrentDurability -= m_fDegradePerShot;
-		if (m_fCurrentDurability < 0)
-			m_fCurrentDurability = 0;
-		
-		// Should only be ran by the owner (server)
-		RplComponent rplComp = RplComponent.Cast(GetOwner().FindComponent(RplComponent));
-		if (!rplComp || !rplComp.IsOwner())
-			return;
-		
 		MuzzleComponent currentMuzzle = MuzzleComponent.Cast(weapon.GetCurrentMuzzle());
 		if (!currentMuzzle)
 			return;
@@ -138,14 +130,31 @@ class WDS_DurabilityComponent : ScriptComponent
 		int currentBarrelIndex = currentMuzzle.GetCurrentBarrelIndex();
 		BaseMagazineComponent currentMagazine = weapon.GetCurrentMagazine();
 		
+		if (!currentMuzzle.IsCurrentBarrelChambered())
+			return;
+		
+		// this will just get resynced by the server
+		m_fCurrentDurability -= m_fDegradePerShot;
+		if (m_fCurrentDurability < 0)
+			m_fCurrentDurability = 0;
+		
+		// Should only be ran by the 
+		RplComponent rplComp = RplComponent.Cast(GetOwner().FindComponent(RplComponent));
+		if (!rplComp || !rplComp.IsOwner())
+			return;
+		
 		Replication.BumpMe();
 		
 		#ifdef WORKBENCH
 		PrintFormat("Durability: %1", m_fCurrentDurability);
 		#endif
 		if (m_fCurrentDurability <= 0) {
+			// Clear the chamber to make it give the illusion the round exploded
+			// Unlike with regular jamming we're not refunding the bullet
 			currentMuzzle.ClearChamber(currentBarrelIndex);
-			if (m_fTimestamp > 0 && (GetGame().GetWorld().GetWorldTime() - m_fTimestamp) < 1000)
+			
+			// Make sure this isn't being triggered within a few frames
+			if (m_fTimestamp > 0 && (GetGame().GetWorld().GetWorldTime() - m_fTimestamp) < 500)
 				return;
 			
 			PlayerController playerController = GetGame().GetPlayerManager().GetPlayerController(playerId);
@@ -159,7 +168,7 @@ class WDS_DurabilityComponent : ScriptComponent
 				if (!charDamManager)
 					return;
 				
-				// Particle effect?
+				// Create particle effect and broadcast it
 				if (m_sExplosionEffect) {
 					RplId entityId = Replication.FindId(this);
 					if (entityId.IsValid()) {
@@ -168,6 +177,7 @@ class WDS_DurabilityComponent : ScriptComponent
 					}
 				}
 				
+				// Should the player become injured and start bleeding?
 				if (m_bDamageOnExplode)
 					charDamManager.AddParticularBleeding();
 				

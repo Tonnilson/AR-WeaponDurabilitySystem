@@ -13,7 +13,6 @@ GenericEntity : "{63E8322E2ADD4AA7}Prefabs/Weapons/Rifles/AK74/Rifle_AK74_GP25.e
    ResponseIndex "Normal"
   }
   WDS_DurabilityComponent "{62D9088FEC7826F3}" {
-   m_sDestroyedEntity "{446D2B1FB3EC1047}Prefabs/Weapons/Rifle/AK_74_Test.et"
    m_sExplosionEffect "{5592BC9B67C60D16}Particles/Weapon/Explosion_RGD5.ptc"
    m_fDefaultDurability 4
    m_fDegradePerShot 0.2
