@@ -87,7 +87,7 @@ class WDS_DurabilityComponent : ScriptComponent
 		params.TransformMode = ETransformMode.LOCAL;
 		GetOwner().GetTransform(params.Transform);
 
-		IEntity destroyedGun = GetGame().SpawnEntityPrefab(m_sDestroyedEntity, false, GetOwner().GetWorld(), params);
+		IEntity destroyedGun = GetGame().SpawnEntityPrefab(Resource.Load(m_sDestroyedEntity), GetOwner().GetWorld(), params);
 		if (destroyedGun) {
 			SCR_EntityHelper.DeleteEntityAndChildren(GetOwner());
 			Physics destroyedPhys = destroyedGun.GetPhysics();
